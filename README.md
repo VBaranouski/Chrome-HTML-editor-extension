@@ -1,6 +1,24 @@
-# Local HTML Editor (Chrome Extension)
+# PagePatch - HTML File Editor
 
 A Manifest V3 Chrome extension that lets you toggle "edit mode" on a local HTML file open in the browser, edit it inline with a rich floating toolbar, and save the result via the browser's Save As dialog. You can overwrite the original file or save a copy.
+
+## Store Listing Copy
+
+**Name**
+
+`PagePatch - HTML File Editor`
+
+**Short description**
+
+Edit local HTML files directly in Chrome with rich formatting tools and save changes as the same file or a copy.
+
+**Long description**
+
+PagePatch lets you open a local HTML file in Chrome, switch into edit mode, and update the page directly in the browser without opening a separate HTML editor.
+
+Use the floating toolbar to format text, apply headings, build lists, adjust alignment, change colors, insert links and images, add horizontal rules, and make quick text edits inline. PagePatch also includes undo/redo plus a built-in Find & Replace panel for editing longer pages faster.
+
+When you're done, save the updated HTML through Chrome's Save As flow. You can overwrite the original file by choosing the same location and filename, or save a separate copy. PagePatch is built for editing `file://` HTML pages locally and keeping the workflow simple: open in Chrome, edit visually, save your changes.
 
 ## Features
 
@@ -90,8 +108,7 @@ Before saving, the extension cleans up its own DOM artifacts (toolbar host, find
 │   ├── background.js
 │   ├── content/
 │   │   ├── content.js          # toggle edit mode, action handlers, find/replace, DOM cleanup
-│   │   ├── toolbar.js          # floating toolbar UI (two rows + find panel) in Shadow DOM
-│   │   └── toolbar.css
+│   │   └── toolbar.js          # floating toolbar UI (two rows + find panel) in Shadow DOM (CSS inlined)
 │   └── popup/
 │       ├── popup.html
 │       ├── popup.js
@@ -102,8 +119,40 @@ Before saving, the extension cleans up its own DOM artifacts (toolbar host, find
 │   └── icon128.png
 ├── examples/
 │   └── sample.html             # quick fixture for trying the extension
+├── PRIVACY.md                  # privacy policy (required by Chrome Web Store)
+├── PUBLISHING.md               # how to publish on the Chrome Web Store
+├── LICENSE                     # MIT
 └── README.md
 ```
+
+## Permissions
+
+PagePatch requests only the permissions it actually needs:
+
+- `activeTab`, `scripting` — to inject the editor on the current tab when you click the toolbar icon (no persistent broad host access).
+- `downloads` — to surface Chrome's Save As dialog when you save the edited HTML.
+- `storage` — used only for `chrome.storage.session` (volatile, not synced) to remember per-tab edit state.
+- `host_permissions: file:///*` — to enable editing of local HTML files, the extension's stated single purpose.
+
+PagePatch makes no network requests, ships no remote code, and collects no telemetry. See [PRIVACY.md](PRIVACY.md) for full details.
+
+## Security
+
+- No third-party JavaScript dependencies — zero supply-chain surface.
+- Toolbar UI mounts in a Shadow DOM, isolated from host-page CSS and JS.
+- Link and image insertion validate the URL scheme before writing to the page, blocking `javascript:` and other dangerous URLs from being persisted into the saved HTML.
+- The background message handler verifies the sender and rejects messages from outside the extension.
+- Default Manifest V3 CSP applies (`script-src 'self'; object-src 'self'`).
+
+To re-run the security scans before a release, see the "Re-run security checks" snippet in [PUBLISHING.md](PUBLISHING.md#8-post-publish).
+
+## Publishing
+
+To publish PagePatch on the Chrome Web Store, follow [PUBLISHING.md](PUBLISHING.md).
+
+## License
+
+[MIT](LICENSE).
 
 ## Roadmap
 
@@ -112,3 +161,4 @@ Before saving, the extension cleans up its own DOM artifacts (toolbar host, find
 - Auto-save / change tracking diff
 - Multi-file / project view
 - True silent overwrite via Native Messaging
+- Migrate formatting commands off `document.execCommand` (deprecated; currently safe but worth replacing)

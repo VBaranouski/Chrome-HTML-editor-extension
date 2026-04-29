@@ -60,10 +60,6 @@ async function ensureContentScript(tabId) {
   } catch {
   }
   try {
-    await chrome.scripting.insertCSS({
-      target: { tabId },
-      files: ["src/content/toolbar.css"],
-    });
     await chrome.scripting.executeScript({
       target: { tabId },
       files: ["src/content/toolbar.js", "src/content/content.js"],
@@ -75,10 +71,34 @@ async function ensureContentScript(tabId) {
   }
 }
 
+function isTrustedSender(sender) {
+  if (!sender) return false;
+  if (sender.id !== chrome.runtime.id) return false;
+  if (sender.url && !sender.url.startsWith(`chrome-extension://${chrome.runtime.id}/`)) {
+    if (sender.tab?.id == null) return false;
+  }
+  return true;
+}
+
+function isValidTabId(value) {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!isTrustedSender(sender)) {
+    sendResponse({ error: "Unauthorized sender." });
+    return false;
+  }
+
   (async () => {
     try {
+      const senderTabId = sender?.tab?.id;
+
       if (message?.type === "GET_STATUS") {
+        if (!isValidTabId(message.tabId)) {
+          sendResponse({ error: "Invalid tabId." });
+          return;
+        }
         const status = await getTabState(message.tabId);
         sendResponse(status);
         return;
@@ -86,6 +106,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       if (message?.type === "SET_EDIT_MODE") {
         const tabId = message.tabId;
+        if (!isValidTabId(tabId)) {
+          sendResponse({ error: "Invalid tabId." });
+          return;
+        }
         const enable = !!message.enable;
         const ok = await ensureContentScript(tabId);
         if (!ok) {
@@ -106,18 +130,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       if (message?.type === "DIRTY_CHANGED") {
-        const tabId = sender?.tab?.id;
-        if (tabId != null) {
-          await setTabState(tabId, { dirty: !!message.dirty });
+        if (isValidTabId(senderTabId)) {
+          await setTabState(senderTabId, { dirty: !!message.dirty });
         }
         sendResponse({ ok: true });
         return;
       }
 
       if (message?.type === "EDIT_STATE_CHANGED") {
-        const tabId = sender?.tab?.id;
-        if (tabId != null) {
-          await setTabState(tabId, {
+        if (isValidTabId(senderTabId)) {
+          await setTabState(senderTabId, {
             editing: !!message.editing,
             dirty: !!message.dirty,
           });
@@ -128,6 +150,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       if (message?.type === "SAVE") {
         const tabId = message.tabId;
+        if (!isValidTabId(tabId)) {
+          sendResponse({ error: "Invalid tabId." });
+          return;
+        }
         const tab = await chrome.tabs.get(tabId);
         const res = await sendToTab(tabId, { type: "GET_HTML" });
         if (res?.error) {

@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Local HTML Editor",
+  "name": "PagePatch - HTML File Editor",
   "version": "0.1.0",
-  "description": "Edit text in local HTML files opened in Chrome and save changes via Save As.",
+  "description": "Edit local HTML files directly in Chrome with rich formatting tools and save changes as the same file or a copy.",
   "permissions": ["activeTab", "scripting", "downloads", "storage"],
-  "host_permissions": ["file:///*", "<all_urls>"],
+  "host_permissions": ["file:///*"],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"
   },
   "action": {
-    "default_title": "Local HTML Editor",
+    "default_title": "PagePatch - HTML File Editor",
     "default_popup": "src/popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
@@ -25,16 +25,10 @@
   },
   "content_scripts": [
     {
-      "matches": ["file:///*", "<all_urls>"],
+      "matches": ["file:///*"],
       "js": ["src/content/toolbar.js", "src/content/content.js"],
       "run_at": "document_idle",
       "all_frames": false
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["src/content/toolbar.css"],
-      "matches": ["<all_urls>"]
     }
   ]
 }

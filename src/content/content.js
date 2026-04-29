@@ -22,6 +22,37 @@
     currentIndex: -1,
   };
 
+  const ALLOWED_LINK_SCHEMES = new Set([
+    "http:",
+    "https:",
+    "mailto:",
+    "tel:",
+    "ftp:",
+    "ftps:",
+    "file:",
+  ]);
+  const ALLOWED_IMAGE_SCHEMES = new Set(["http:", "https:", "data:", "file:"]);
+  const ALLOWED_DATA_IMAGE_RE = /^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i;
+
+  function safeUrl(input, allowed, opts = {}) {
+    if (typeof input !== "string") return null;
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+    if (opts.allowFragment && trimmed.startsWith("#")) return trimmed;
+    let parsed;
+    try {
+      parsed = new URL(trimmed, document.baseURI || location.href);
+    } catch {
+      return null;
+    }
+    if (!allowed.has(parsed.protocol)) return null;
+    if (parsed.protocol === "data:") {
+      if (!opts.allowDataImage) return null;
+      if (!ALLOWED_DATA_IMAGE_RE.test(parsed.href)) return null;
+    }
+    return parsed.href;
+  }
+
   function notifyState() {
     chrome.runtime
       .sendMessage({ type: "EDIT_STATE_CHANGED", editing: state.editing, dirty: state.dirty })
@@ -160,16 +191,27 @@
         const parent = existingAnchor.parentNode;
         while (existingAnchor.firstChild) parent.insertBefore(existingAnchor.firstChild, existingAnchor);
         parent.removeChild(existingAnchor);
-      } else {
-        existingAnchor.setAttribute("href", href);
+        return;
       }
+      const safeHref = safeUrl(href, ALLOWED_LINK_SCHEMES, { allowFragment: true });
+      if (!safeHref) {
+        window.alert("Unsupported link URL. Use http(s), mailto:, tel:, ftp(s):, file:, or a #fragment.");
+        return;
+      }
+      existingAnchor.setAttribute("href", safeHref);
       return;
     }
 
     if (href === "" || range.collapsed) return;
 
+    const safeHref = safeUrl(href, ALLOWED_LINK_SCHEMES, { allowFragment: true });
+    if (!safeHref) {
+      window.alert("Unsupported link URL. Use http(s), mailto:, tel:, ftp(s):, file:, or a #fragment.");
+      return;
+    }
+
     const a = document.createElement("a");
-    a.setAttribute("href", href);
+    a.setAttribute("href", safeHref);
     try {
       range.surroundContents(a);
     } catch {
@@ -190,7 +232,12 @@
     if (url === null) return;
     const trimmed = url.trim();
     if (!trimmed) return;
-    document.execCommand("insertImage", false, trimmed);
+    const safeSrc = safeUrl(trimmed, ALLOWED_IMAGE_SCHEMES, { allowDataImage: true });
+    if (!safeSrc) {
+      window.alert("Unsupported image URL. Use http(s), file:, or a data:image/* (png, jpeg, gif, webp, svg+xml) URL.");
+      return;
+    }
+    document.execCommand("insertImage", false, safeSrc);
   }
 
   function applyHorizontalRule() {
