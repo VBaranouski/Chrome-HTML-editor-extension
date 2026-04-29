@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Local HTML Editor",
+  "version": "0.1.0",
+  "description": "Edit text in local HTML files opened in Chrome and save changes via Save As.",
+  "permissions": ["activeTab", "scripting", "downloads", "storage"],
+  "host_permissions": ["file:///*", "<all_urls>"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Local HTML Editor",
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["file:///*", "<all_urls>"],
+      "js": ["src/content/toolbar.js", "src/content/content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/content/toolbar.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
