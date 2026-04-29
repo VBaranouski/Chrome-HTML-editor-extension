@@ -225,21 +225,6 @@
     sel.addRange(newRange);
   }
 
-  function applyImage() {
-    const range = ensureRangeInEditable();
-    if (!range) return;
-    const url = window.prompt("Image URL:", "https://");
-    if (url === null) return;
-    const trimmed = url.trim();
-    if (!trimmed) return;
-    const safeSrc = safeUrl(trimmed, ALLOWED_IMAGE_SCHEMES, { allowDataImage: true });
-    if (!safeSrc) {
-      window.alert("Unsupported image URL. Use http(s), file:, or a data:image/* (png, jpeg, gif, webp, svg+xml) URL.");
-      return;
-    }
-    document.execCommand("insertImage", false, safeSrc);
-  }
-
   function applyHorizontalRule() {
     const range = ensureRangeInEditable();
     if (!range) return;
@@ -544,9 +529,6 @@
         break;
       case "link":
         applyLink();
-        break;
-      case "image":
-        applyImage();
         break;
       case "hr":
         applyHorizontalRule();

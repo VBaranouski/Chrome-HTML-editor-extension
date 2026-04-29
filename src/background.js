@@ -99,7 +99,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ error: "Invalid tabId." });
           return;
         }
-        const status = await getTabState(message.tabId);
+        const tab = await chrome.tabs.get(message.tabId).catch(() => null);
+        if (tab?.status === "loading") {
+          const status = await setTabState(message.tabId, { editing: false, dirty: false });
+          sendResponse(status);
+          return;
+        }
+        const live = await sendToTab(message.tabId, { type: "PING" });
+        if (live?.ok) {
+          const status = await setTabState(message.tabId, {
+            editing: !!live.editing,
+            dirty: !!live.dirty,
+          });
+          sendResponse(status);
+          return;
+        }
+        const status = await setTabState(message.tabId, { editing: false, dirty: false });
         sendResponse(status);
         return;
       }
@@ -236,7 +251,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.status === "loading" && changeInfo.url) {
+  if (changeInfo.status === "loading") {
     clearTabState(tabId).catch(() => {});
   }
 });

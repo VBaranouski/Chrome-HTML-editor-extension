@@ -2,36 +2,41 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Local HTML Editor</title>
+    <title>PagePatch</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <header class="header">
-      <h1>Local HTML Editor</h1>
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <img src="../../icons/icon128.png" alt="" />
+        </div>
+        <h1>PagePatch</h1>
+      </div>
+      <span id="state" class="status-pill">READ-ONLY</span>
     </header>
 
-    <section class="status">
-      <div class="status-row">
+    <section class="file-card" aria-label="Current file">
+      <div class="file-label">File</div>
+      <div class="file-name-row">
         <span class="status-label">File</span>
         <span id="filename" class="status-value" title="">—</span>
       </div>
-      <div class="status-row">
-        <span class="status-label">State</span>
-        <span id="state" class="status-value">read-only</span>
+      <div id="file-state" class="file-state">
+        <span class="dirty-indicator" aria-hidden="true"></span>
+        <span>Read-only</span>
       </div>
     </section>
 
     <section class="toggle-row">
-      <label class="switch">
-        <input type="checkbox" id="edit-toggle" />
-        <span class="slider"></span>
-      </label>
-      <span class="toggle-label">Edit mode</span>
-    </section>
-
-    <section class="actions">
+      <div class="edit-control">
+        <span class="toggle-label">Edit mode</span>
+        <label class="switch">
+          <input type="checkbox" id="edit-toggle" />
+          <span class="slider"></span>
+        </label>
+      </div>
       <button id="save" class="btn btn-primary" disabled>Save</button>
-      <button id="save-as" class="btn" disabled>Save As&hellip;</button>
     </section>
 
     <p id="hint" class="hint"></p>

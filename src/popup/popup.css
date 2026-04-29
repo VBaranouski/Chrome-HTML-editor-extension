@@ -1,15 +1,16 @@
 :root {
-  --bg: #ffffff;
-  --fg: #111827;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-fg: #ffffff;
-  --btn-bg: #f3f4f6;
-  --btn-bg-hover: #e5e7eb;
-  --danger: #dc2626;
-  --success: #16a34a;
+  --popup-bg: #0c1424;
+  --card-bg: #1b2638;
+  --card-border: #334158;
+  --fg: #eef4ff;
+  --muted: #a7b3c7;
+  --muted-strong: #697792;
+  --primary: #41bfee;
+  --primary-hover: #62cef7;
+  --primary-fg: #07111f;
+  --warning: #f6b23d;
+  --success: #67e8a4;
+  --danger: #fb7185;
 }
 
 * {
@@ -23,63 +24,155 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 13px;
   color: var(--fg);
-  background: var(--bg);
-  width: 280px;
+  background: var(--popup-bg);
+  width: 300px;
+  height: 250px;
 }
 
 .header {
-  padding: 12px 14px 8px;
-  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 14px 12px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.brand-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--card-bg);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.brand-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .header h1 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
+  overflow: hidden;
+  color: var(--fg);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.status {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.status-pill {
+  flex: 0 0 auto;
+  padding: 9px 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--primary);
+  font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.status-row {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
+.file-card {
+  margin: 0 14px 20px;
+  padding: 12px 12px 11px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--card-bg);
+}
+
+.file-label {
+  margin-bottom: 9px;
+  color: var(--muted-strong);
+  font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.file-name-row {
+  min-width: 0;
+  margin-bottom: 9px;
 }
 
 .status-label {
-  color: var(--muted);
-  width: 44px;
-  flex-shrink: 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 .status-value {
-  color: var(--fg);
+  display: block;
   overflow: hidden;
+  color: var(--fg);
+  font: 800 13px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
-  font-variant-numeric: tabular-nums;
+}
+
+.file-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.file-state.dirty {
+  color: var(--warning);
+}
+
+.file-state.saved {
+  color: var(--success);
+}
+
+.dirty-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  flex: 0 0 auto;
 }
 
 .toggle-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
+  padding: 0 14px 14px;
+}
+
+.edit-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: max-content;
 }
 
 .switch {
+  display: block;
   position: relative;
-  width: 36px;
-  height: 20px;
-  flex-shrink: 0;
+  width: 42px;
+  height: 24px;
+  flex: 0 0 42px;
 }
 
 .switch input {
@@ -91,23 +184,24 @@ body {
 .slider {
   position: absolute;
   inset: 0;
-  background: #cbd5e1;
+  background: #26344a;
   border-radius: 999px;
-  transition: background 0.15s ease;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 
 .slider::before {
   content: "";
   position: absolute;
-  height: 16px;
-  width: 16px;
-  left: 2px;
-  top: 2px;
-  background: white;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
   transition: transform 0.15s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .switch input:checked + .slider {
@@ -115,40 +209,45 @@ body {
 }
 
 .switch input:checked + .slider::before {
-  transform: translateX(16px);
+  transform: translateX(18px);
+}
+
+.switch input:focus-visible + .slider {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
 }
 
 .toggle-label {
-  font-weight: 500;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .btn {
-  flex: 1;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  background: var(--btn-bg);
-  color: var(--fg);
-  border-radius: 6px;
+  flex: 0 0 72px;
+  height: 34px;
+  min-width: 72px;
+  padding: 0 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: #0d1626;
+  color: var(--muted);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 800;
   cursor: pointer;
-  transition: background 0.1s ease, border-color 0.1s ease;
+  transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease,
+    opacity 0.1s ease;
 }
 
 .btn:hover:not(:disabled) {
-  background: var(--btn-bg-hover);
+  border-color: #48607f;
+  color: var(--fg);
 }
 
 .btn-primary {
   background: var(--primary);
-  border-color: var(--primary);
   color: var(--primary-fg);
+  border-color: var(--primary);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -157,7 +256,7 @@ body {
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -165,7 +264,7 @@ body {
   margin: 0;
   padding: 0 14px 12px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.4;
   min-height: 14px;
 }

@@ -402,7 +402,6 @@
     { value: "h4", label: "Heading 4" },
     { value: "h5", label: "Heading 5" },
     { value: "h6", label: "Heading 6" },
-    { value: "blockquote", label: "Blockquote" },
     { value: "pre", label: "Code block" },
   ];
 
@@ -649,8 +648,6 @@
     buttons.link?.classList.toggle("active", inEditable && hasAncestor(range, ["A"]));
     buttons.unorderedList?.classList.toggle("active", inEditable && hasAncestor(range, ["UL"]));
     buttons.orderedList?.classList.toggle("active", inEditable && hasAncestor(range, ["OL"]));
-    buttons.blockquote?.classList.toggle("active", inEditable && hasAncestor(range, ["BLOCKQUOTE"]));
-
     const align = inEditable ? alignmentOf(range) : "";
     buttons.alignLeft?.classList.toggle("active", inEditable && (align === "left" || align === ""));
     buttons.alignCenter?.classList.toggle("active", inEditable && align === "center");
@@ -659,7 +656,7 @@
 
     if (buttons.heading) {
       const tag = inEditable ? blockAncestorTag(range) : "";
-      const candidate = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "pre"].includes(tag) ? tag : "";
+      const candidate = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "pre"].includes(tag) ? tag : "";
       buttons.heading.value = candidate;
     }
 
@@ -792,7 +789,9 @@
     if (t && t.nodeType === 1 && t.closest && t.closest(INTERACTIVE_DRAG_SELECTOR)) {
       return;
     }
-    const rect = host.getBoundingClientRect();
+    const shellEl = shadow.querySelector(".shell");
+    if (!shellEl) return;
+    const rect = shellEl.getBoundingClientRect();
     dragState = {
       offsetX: e.clientX - rect.left,
       offsetY: e.clientY - rect.top,
@@ -806,12 +805,14 @@
 
   function onDrag(e) {
     if (!dragState) return;
-    const shell = host.firstChild;
-    const w = shell.offsetWidth || 200;
-    const h = shell.offsetHeight || 60;
-    const x = Math.max(4, Math.min(window.innerWidth - 50, e.clientX - dragState.offsetX));
-    const y = Math.max(4, Math.min(window.innerHeight - 40, e.clientY - dragState.offsetY));
     const shellEl = shadow.querySelector(".shell");
+    if (!shellEl) return;
+    const w = shellEl.offsetWidth || 200;
+    const h = shellEl.offsetHeight || 60;
+    const maxX = Math.max(4, window.innerWidth - w - 4);
+    const maxY = Math.max(4, window.innerHeight - h - 4);
+    const x = Math.max(4, Math.min(maxX, e.clientX - dragState.offsetX));
+    const y = Math.max(4, Math.min(maxY, e.clientY - dragState.offsetY));
     shellEl.style.left = x + "px";
     shellEl.style.top = y + "px";
     shellEl.style.right = "auto";
@@ -1068,13 +1069,9 @@
     buttons.indent = buildButton({ icon: ICONS.indent, title: "Increase indent", action: { type: "indent" } });
     row2.append(buttons.unorderedList, buttons.orderedList, buttons.outdent, buttons.indent, makeDivider());
 
-    buttons.blockquote = buildButton({ icon: ICONS.quote, title: "Blockquote", action: { type: "formatBlock", value: "blockquote" } });
-    row2.append(buttons.blockquote, makeDivider());
-
     buttons.link = buildButton({ icon: ICONS.link, title: "Insert / edit link (Ctrl/Cmd+K)", action: { type: "link" } });
-    buttons.image = buildButton({ icon: ICONS.image, title: "Insert image (URL)", action: { type: "image" } });
     buttons.hr = buildButton({ icon: ICONS.hr, title: "Insert horizontal rule", action: { type: "hr" } });
-    row2.append(buttons.link, buttons.image, buttons.hr, makeDivider());
+    row2.append(buttons.link, buttons.hr, makeDivider());
 
     buttons.clearFormat = buildButton({ icon: ICONS.clear, title: "Clear formatting", action: { type: "clearFormat" } });
     buttons.remove = buildButton({ icon: ICONS.trash, cls: "danger", title: "Remove selected text", action: { type: "removeText" } });

@@ -2,9 +2,9 @@
 
 const $editToggle = document.getElementById("edit-toggle");
 const $save = document.getElementById("save");
-const $saveAs = document.getElementById("save-as");
 const $filename = document.getElementById("filename");
 const $state = document.getElementById("state");
+const $fileState = document.getElementById("file-state");
 const $hint = document.getElementById("hint");
 
 let currentTabId = null;
@@ -28,14 +28,24 @@ function basenameFromUrl(url) {
   }
 }
 
+function setEditModeHint(editing) {
+  setHint(editing ? "Edit mode enabled." : "Edit mode disabled.");
+}
+
 function updateUiFromStatus(status) {
   const editing = !!status?.editing;
   const dirty = !!status?.dirty;
 
   $editToggle.checked = editing;
-  $state.textContent = editing ? (dirty ? "editing (unsaved)" : "editing") : "read-only";
+  $state.textContent = editing ? "EDITING" : "READ-ONLY";
+  $fileState.classList.toggle("dirty", editing && dirty);
+  $fileState.classList.toggle("saved", editing && !dirty);
+  $fileState.querySelector("span:last-child").textContent = editing
+    ? dirty
+      ? "Unsaved"
+      : "No changes"
+    : "Read-only";
   $save.disabled = !editing || !dirty;
-  $saveAs.disabled = !editing;
 }
 
 async function getActiveTab() {
@@ -81,6 +91,7 @@ async function init() {
 
   const status = await fetchStatus();
   updateUiFromStatus(status);
+  setEditModeHint(!!status?.editing);
 }
 
 $editToggle.addEventListener("change", async () => {
@@ -98,23 +109,22 @@ $editToggle.addEventListener("change", async () => {
       return;
     }
     updateUiFromStatus(res);
-    setHint(enable ? "Edit mode enabled." : "Edit mode disabled.");
+    setEditModeHint(enable);
   } catch (err) {
     setHint(`Failed: ${err?.message || err}`, "error");
     $editToggle.checked = !enable;
   }
 });
 
-async function triggerSave(saveAs) {
+async function triggerSave() {
   if (currentTabId == null) return;
   $save.disabled = true;
-  $saveAs.disabled = true;
-  setHint(saveAs ? "Opening Save As dialog…" : "Opening Save dialog…");
+  setHint("Opening Save dialog…");
   try {
     const res = await chrome.runtime.sendMessage({
       type: "SAVE",
       tabId: currentTabId,
-      saveAs,
+      saveAs: false,
     });
     if (res?.error) {
       setHint(res.error, "error");
@@ -131,7 +141,6 @@ async function triggerSave(saveAs) {
   }
 }
 
-$save.addEventListener("click", () => triggerSave(false));
-$saveAs.addEventListener("click", () => triggerSave(true));
+$save.addEventListener("click", triggerSave);
 
 document.addEventListener("DOMContentLoaded", init);
