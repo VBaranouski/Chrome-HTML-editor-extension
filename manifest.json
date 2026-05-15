@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "description": "Edit local HTML files directly in Chrome with rich formatting tools and save changes as the same file or a copy.",
   "permissions": ["activeTab", "scripting", "downloads", "storage"],
-  "host_permissions": ["file:///*", "http:///*/*", "https:///*/*"],
+  "host_permissions": ["file:///*", "http://*/*", "https://*/*"],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"

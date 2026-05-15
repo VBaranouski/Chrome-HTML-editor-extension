@@ -460,6 +460,147 @@
   font: 500 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: #e5e7eb;
 }
+
+/* ─── Image panel ─── */
+
+.image-panel {
+  display: none;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  padding: 10px;
+  width: 280px;
+  max-width: calc(100vw - 24px);
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: #111827;
+  position: absolute;
+  right: calc(100% + 6px);
+  top: 0;
+}
+
+.image-panel.open {
+  display: flex;
+}
+
+.toolbar.horizontal ~ .image-panel {
+  position: static;
+}
+
+.image-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.image-panel-body .field-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.image-panel-body .field-input {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  color: #111827;
+  background: #ffffff;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.image-panel-body .field-input:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 2px rgba(147, 197, 253, 0.4);
+}
+
+.image-panel-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  max-height: 140px;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+.image-panel-preview img {
+  max-width: 100%;
+  max-height: 138px;
+  object-fit: contain;
+}
+
+.image-panel-preview .placeholder {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.image-panel-upload-btn {
+  appearance: none;
+  border: 1px dashed #d1d5db;
+  background: #f9fafb;
+  color: #4b5563;
+  font: inherit;
+  font-size: 12px;
+  padding: 14px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.image-panel-upload-btn:hover {
+  background: #f3f4f6;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.image-panel-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.image-panel-actions .panel-btn {
+  appearance: none;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #111827;
+  height: 28px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.image-panel-actions .panel-btn:hover {
+  background: #f3f4f6;
+}
+
+.image-panel-actions .panel-btn.primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.image-panel-actions .panel-btn.primary:hover {
+  background: #1d4ed8;
+}
+
+.image-panel-actions .panel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 `;
 
   const FONT_SIZES = ["10", "12", "14", "16", "18", "20", "24", "28", "32", "40", "48"];
@@ -517,6 +658,8 @@
   let toolbarEl = null;
   let findPanelEl = null;
   let findElems = {};
+  let imagePanelEl = null;
+  let imageElems = {};
   let buttons = {};
   let dirtyDot = null;
   let savedRange = null;
@@ -1047,6 +1190,130 @@
     return panel;
   }
 
+  function buildImagePanel() {
+    const panel = document.createElement("div");
+    panel.className = "image-panel";
+
+    const body = document.createElement("div");
+    body.className = "image-panel-body";
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/png,image/jpeg,image/gif,image/webp,image/svg+xml";
+    fileInput.style.display = "none";
+    const uploadBtn = document.createElement("button");
+    uploadBtn.type = "button";
+    uploadBtn.className = "image-panel-upload-btn";
+    uploadBtn.textContent = "Click to choose an image file";
+    uploadBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      fileInput.click();
+    });
+
+    const altLabel = document.createElement("span");
+    altLabel.className = "field-label";
+    altLabel.textContent = "Alt text (optional)";
+    const altInput = document.createElement("input");
+    altInput.type = "text";
+    altInput.className = "field-input";
+    altInput.placeholder = "Describe the image";
+    altInput.spellcheck = false;
+
+    const preview = document.createElement("div");
+    preview.className = "image-panel-preview";
+    const placeholderSpan = document.createElement("span");
+    placeholderSpan.className = "placeholder";
+    placeholderSpan.textContent = "No image selected";
+    preview.appendChild(placeholderSpan);
+
+    body.append(fileInput, uploadBtn, altLabel, altInput, preview);
+
+    const actions = document.createElement("div");
+    actions.className = "image-panel-actions";
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.className = "panel-btn";
+    cancelBtn.textContent = "Cancel";
+    const insertBtn = document.createElement("button");
+    insertBtn.type = "button";
+    insertBtn.className = "panel-btn primary";
+    insertBtn.textContent = "Insert";
+    insertBtn.disabled = true;
+    actions.append(cancelBtn, insertBtn);
+
+    panel.append(body, actions);
+
+    let pendingDataUrl = null;
+
+    function setPreview(src) {
+      preview.innerHTML = "";
+      if (src) {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "Preview";
+        preview.appendChild(img);
+        insertBtn.disabled = false;
+      } else {
+        const ph = document.createElement("span");
+        ph.className = "placeholder";
+        ph.textContent = "No image selected";
+        preview.appendChild(ph);
+        insertBtn.disabled = true;
+      }
+    }
+
+    function reset() {
+      pendingDataUrl = null;
+      setPreview(null);
+      fileInput.value = "";
+      uploadBtn.textContent = "Click to choose an image file";
+      altInput.value = "";
+    }
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      uploadBtn.textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = () => {
+        pendingDataUrl = reader.result;
+        setPreview(pendingDataUrl);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    cancelBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      api.closeImage();
+    });
+
+    insertBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (!pendingDataUrl) return;
+      restoreSelection();
+      onActionCallback?.({ type: "insertImage", src: pendingDataUrl, alt: altInput.value.trim() });
+      api.closeImage();
+    });
+
+    altInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        insertBtn.click();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        api.closeImage();
+      }
+    });
+
+    function setPendingDataUrl(url) {
+      pendingDataUrl = url;
+    }
+
+    imageElems = { panel, altInput, fileInput, uploadBtn, insertBtn, reset, setPreview, setPendingDataUrl };
+    imagePanelEl = panel;
+    return panel;
+  }
+
   function build() {
     host = document.createElement("div");
     host.id = "__cee_toolbar_host__";
@@ -1162,8 +1429,9 @@
     row2.append(buttons.unorderedList, buttons.orderedList, buttons.outdent, buttons.indent, makeDivider());
 
     buttons.link = buildButton({ icon: ICONS.link, title: "Insert / edit link (Ctrl/Cmd+K)", action: { type: "link" } });
+    buttons.image = buildButton({ icon: ICONS.image, title: "Insert image", action: { type: "__toggleImage" } });
     buttons.hr = buildButton({ icon: ICONS.hr, title: "Insert horizontal rule", action: { type: "hr" } });
-    row2.append(buttons.link, buttons.hr, makeDivider());
+    row2.append(buttons.link, buttons.image, buttons.hr, makeDivider());
 
     buttons.clearFormat = buildButton({ icon: ICONS.clear, title: "Clear formatting", action: { type: "clearFormat" } });
     buttons.remove = buildButton({ icon: ICONS.trash, cls: "danger", title: "Remove selected text", action: { type: "removeText" } });
@@ -1190,7 +1458,9 @@
     const findPanel = buildFindPanel();
     findPanelEl = findPanel;
 
-    shell.append(toolbarEl, findPanel);
+    const imagePanel = buildImagePanel();
+
+    shell.append(toolbarEl, findPanel, imagePanel);
     shadow.appendChild(shell);
 
     tooltipEl = document.createElement("div");
@@ -1228,6 +1498,10 @@
           api.toggleFind();
           return;
         }
+        if (action?.type === "__toggleImage") {
+          api.toggleImage();
+          return;
+        }
         onAction(action);
       };
       build();
@@ -1243,6 +1517,8 @@
       toolbarEl = null;
       findPanelEl = null;
       findElems = {};
+      imagePanelEl = null;
+      imageElems = {};
       buttons = {};
       dirtyDot = null;
       savedRange = null;
@@ -1298,6 +1574,32 @@
       [findElems.prevBtn, findElems.nextBtn, findElems.replaceBtn, findElems.replaceAllBtn].forEach((b) => {
         if (b) b.disabled = noResults;
       });
+    },
+    openImage() {
+      if (!imagePanelEl) return;
+      rememberSelection();
+      imageElems.reset?.();
+      imagePanelEl.classList.add("open");
+    },
+    closeImage() {
+      if (!imagePanelEl) return;
+      imagePanelEl.classList.remove("open");
+    },
+    toggleImage() {
+      if (!imagePanelEl) return;
+      if (imagePanelEl.classList.contains("open")) api.closeImage();
+      else api.openImage();
+    },
+    isImageOpen() {
+      return !!imagePanelEl?.classList.contains("open");
+    },
+    insertImageFromClipboard(dataUrl) {
+      if (!imagePanelEl) return;
+      imageElems.reset?.();
+      imageElems.setPendingDataUrl?.(dataUrl);
+      if (imageElems.uploadBtn) imageElems.uploadBtn.textContent = "Pasted from clipboard";
+      imageElems.setPreview?.(dataUrl);
+      imagePanelEl.classList.add("open");
     },
   };
 

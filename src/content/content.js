@@ -75,9 +75,47 @@
     setDirty(true);
   }
 
+  function onPaste(e) {
+    if (!state.editing) return;
+    if (isInsideToolbar(e.target)) return;
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const blob = item.getAsFile();
+        if (!blob) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result;
+          if (typeof dataUrl === "string" && dataUrl.startsWith("data:image/")) {
+            insertImage(dataUrl, "");
+          }
+        };
+        reader.readAsDataURL(blob);
+        return;
+      }
+    }
+  }
+
   function onKeyDown(e) {
     if (!state.editing) return;
     if (isInsideToolbar(e.target)) return;
+
+    if (resizeTarget && (e.key === "Escape")) {
+      e.preventDefault();
+      removeResizeOverlay();
+      return;
+    }
+    if (resizeTarget && (e.key === "Delete" || e.key === "Backspace")) {
+      e.preventDefault();
+      const img = resizeTarget;
+      removeResizeOverlay();
+      img.remove();
+      fireInput(document.body);
+      return;
+    }
+
     const mod = e.metaKey || e.ctrlKey;
     if (!mod) return;
     const k = e.key.toLowerCase();
@@ -225,6 +263,169 @@
     newRange.selectNodeContents(a);
     sel.removeAllRanges();
     sel.addRange(newRange);
+  }
+
+  // ─── Image resize handles ───
+
+  const RESIZE_OVERLAY_ID = "__cee_img_resize__";
+  let resizeTarget = null;
+  let resizeOverlay = null;
+  let resizeDrag = null;
+
+  function removeResizeOverlay() {
+    resizeOverlay?.remove();
+    resizeOverlay = null;
+    resizeTarget = null;
+  }
+
+  function positionOverlay() {
+    if (!resizeOverlay || !resizeTarget) return;
+    const rect = resizeTarget.getBoundingClientRect();
+    const o = resizeOverlay;
+    o.style.left = `${rect.left + window.scrollX}px`;
+    o.style.top = `${rect.top + window.scrollY}px`;
+    o.style.width = `${rect.width}px`;
+    o.style.height = `${rect.height}px`;
+  }
+
+  function showResizeOverlay(img) {
+    if (resizeTarget === img && resizeOverlay) {
+      positionOverlay();
+      return;
+    }
+    removeResizeOverlay();
+    resizeTarget = img;
+
+    const overlay = document.createElement("div");
+    overlay.id = RESIZE_OVERLAY_ID;
+    overlay.setAttribute("data-cee-root", "true");
+    overlay.contentEditable = "false";
+    const s = overlay.style;
+    s.position = "absolute";
+    s.border = "2px solid #3b82f6";
+    s.boxSizing = "border-box";
+    s.pointerEvents = "none";
+    s.zIndex = "2147483646";
+
+    const handles = ["nw", "ne", "sw", "se"];
+    const cursors = { nw: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize", se: "nwse-resize" };
+    const positions = {
+      nw: { top: "-4px", left: "-4px" },
+      ne: { top: "-4px", right: "-4px" },
+      sw: { bottom: "-4px", left: "-4px" },
+      se: { bottom: "-4px", right: "-4px" },
+    };
+
+    for (const dir of handles) {
+      const h = document.createElement("div");
+      h.dataset.handle = dir;
+      const hs = h.style;
+      hs.position = "absolute";
+      hs.width = "8px";
+      hs.height = "8px";
+      hs.background = "#3b82f6";
+      hs.border = "1px solid #ffffff";
+      hs.borderRadius = "2px";
+      hs.pointerEvents = "auto";
+      hs.cursor = cursors[dir];
+      hs.boxSizing = "border-box";
+      Object.assign(hs, positions[dir]);
+      h.addEventListener("mousedown", onHandleMouseDown);
+      overlay.appendChild(h);
+    }
+
+    resizeOverlay = overlay;
+    document.body.appendChild(overlay);
+    positionOverlay();
+  }
+
+  function onHandleMouseDown(e) {
+    if (e.button !== 0 || !resizeTarget) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const dir = e.target.dataset.handle;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = resizeTarget.getBoundingClientRect().width;
+    const startH = resizeTarget.getBoundingClientRect().height;
+    const aspect = startW / (startH || 1);
+
+    resizeDrag = { dir, startX, startY, startW, startH, aspect };
+    document.addEventListener("mousemove", onResizeMove, true);
+    document.addEventListener("mouseup", onResizeUp, true);
+  }
+
+  function onResizeMove(e) {
+    if (!resizeDrag || !resizeTarget) return;
+    e.preventDefault();
+    const { dir, startX, startY, startW, startH, aspect } = resizeDrag;
+    let dx = e.clientX - startX;
+    let dy = e.clientY - startY;
+
+    if (dir === "nw") { dx = -dx; dy = -dy; }
+    else if (dir === "ne") { dy = -dy; }
+    else if (dir === "sw") { dx = -dx; }
+
+    let newW = Math.max(20, startW + dx);
+    let newH = newW / aspect;
+
+    resizeTarget.style.width = `${Math.round(newW)}px`;
+    resizeTarget.style.height = `${Math.round(newH)}px`;
+    resizeTarget.removeAttribute("width");
+    resizeTarget.removeAttribute("height");
+    positionOverlay();
+  }
+
+  function onResizeUp(e) {
+    document.removeEventListener("mousemove", onResizeMove, true);
+    document.removeEventListener("mouseup", onResizeUp, true);
+    if (resizeDrag && resizeTarget) {
+      fireInput(document.body);
+    }
+    resizeDrag = null;
+  }
+
+  function onBodyMouseDown(e) {
+    if (!state.editing) return;
+    if (isInsideToolbar(e.target)) return;
+
+    if (e.target?.tagName === "IMG" && document.body.contains(e.target)) {
+      e.preventDefault();
+      showResizeOverlay(e.target);
+      return;
+    }
+
+    if (resizeOverlay && !resizeOverlay.contains(e.target)) {
+      removeResizeOverlay();
+    }
+  }
+
+  function onWindowScroll() {
+    if (resizeOverlay) positionOverlay();
+  }
+
+  function insertImage(src, alt) {
+    const allowed = new Set([...ALLOWED_IMAGE_SCHEMES]);
+    const safeSrc = safeUrl(src, allowed, { allowDataImage: true });
+    if (!safeSrc) {
+      window.alert("Unsupported image URL. Use http(s), data:image/*, or file:// URLs.");
+      return;
+    }
+    const range = ensureRangeInEditable();
+    if (!range) return;
+    const img = document.createElement("img");
+    img.src = safeSrc;
+    if (alt) img.alt = alt;
+    img.style.maxWidth = "100%";
+    if (!range.collapsed) range.deleteContents();
+    range.insertNode(img);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    const after = document.createRange();
+    after.setStartAfter(img);
+    after.collapse(true);
+    sel.addRange(after);
+    fireInput(document.body);
   }
 
   function applyHorizontalRule() {
@@ -532,6 +733,9 @@
       case "link":
         applyLink();
         break;
+      case "insertImage":
+        insertImage(action.src, action.alt);
+        return;
       case "hr":
         applyHorizontalRule();
         break;
@@ -580,6 +784,10 @@
     document.body.setAttribute("spellcheck", "false");
     document.body.addEventListener("input", onInput, true);
     document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("paste", onPaste, true);
+    document.addEventListener("mousedown", onBodyMouseDown, true);
+    window.addEventListener("scroll", onWindowScroll, true);
+    window.addEventListener("resize", onWindowScroll);
     TOOLBAR()?.mount(handleAction);
     TOOLBAR()?.setDirty?.(state.dirty);
     state.editing = true;
@@ -589,8 +797,13 @@
   function disableEditing() {
     if (!state.editing) return;
     findClose();
+    removeResizeOverlay();
     document.body.removeEventListener("input", onInput, true);
     document.removeEventListener("keydown", onKeyDown, true);
+    document.removeEventListener("paste", onPaste, true);
+    document.removeEventListener("mousedown", onBodyMouseDown, true);
+    window.removeEventListener("scroll", onWindowScroll, true);
+    window.removeEventListener("resize", onWindowScroll);
     if (state.prevContentEditable === null) {
       document.body.removeAttribute("contenteditable");
     } else {
@@ -608,6 +821,7 @@
 
   function captureCleanHtml() {
     clearFindHighlights();
+    removeResizeOverlay();
 
     const cloned = document.documentElement.cloneNode(true);
     cloned.querySelectorAll(`#${HOST_ID}, [data-cee-root]`).forEach((n) => n.remove());
