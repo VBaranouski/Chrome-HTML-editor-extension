@@ -2,44 +2,82 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PagePatch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <header class="header">
-      <div class="brand">
-        <div class="brand-icon" aria-hidden="true">
-          <img src="../../icons/icon128.png" alt="" />
+    <main class="popup-container">
+      <div class="bg-overlay" aria-hidden="true">
+        <div class="bg-scanlines"></div>
+        <div class="bg-gradient"></div>
+      </div>
+
+      <header class="header">
+        <div class="brand">
+          <div class="brand-icon">
+            <span class="material-symbols-outlined" aria-hidden="true"
+              >code</span
+            >
+          </div>
+          <h1>PagePatch</h1>
         </div>
-        <h1>PagePatch</h1>
-      </div>
-      <span id="state" class="status-pill">READ-ONLY</span>
-    </header>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+            <span class="material-symbols-outlined">light_mode</span>
+          </button>
+          <span id="state" class="status-pill">READ-ONLY</span>
+        </div>
+      </header>
 
-    <section class="file-card" aria-label="Current file">
-      <div class="file-label">File</div>
-      <div class="file-name-row">
-        <span class="status-label">File</span>
-        <span id="filename" class="status-value" title="">—</span>
-      </div>
-      <div id="file-state" class="file-state">
-        <span class="dirty-indicator" aria-hidden="true"></span>
-        <span>Read-only</span>
-      </div>
-    </section>
+      <div class="content">
+        <section class="file-card" aria-label="Current file">
+          <div class="file-card-texture" aria-hidden="true"></div>
+          <span class="file-label">FILE</span>
+          <div id="filename" class="file-name">—</div>
+          <div id="file-state" class="file-state">
+            <span class="dirty-indicator" aria-hidden="true"></span>
+            <span>Read-only</span>
+          </div>
+        </section>
 
-    <section class="toggle-row">
-      <div class="edit-control">
-        <span class="toggle-label">Edit mode</span>
-        <label class="switch">
-          <input type="checkbox" id="edit-toggle" />
-          <span class="slider"></span>
-        </label>
-      </div>
-      <button id="save" class="btn btn-primary" disabled>Save</button>
-    </section>
+        <div class="controls">
+          <div class="toggle-group">
+            <div class="toggle-row">
+              <span class="toggle-label">Edit mode</span>
+              <label class="switch" for="edit-toggle">
+                <input type="checkbox" id="edit-toggle" />
+                <div class="switch-track"></div>
+                <div class="switch-thumb"></div>
+              </label>
+            </div>
+            <p id="hint" class="hint"></p>
+          </div>
 
-    <p id="hint" class="hint"></p>
+          <div class="action-buttons">
+            <div class="export-wrapper">
+              <button id="export-btn" class="btn btn-ghost">Export ▾</button>
+              <div id="export-menu" class="export-menu" hidden>
+                <button class="export-item" data-format="pdf">
+                  Export PDF
+                </button>
+              </div>
+            </div>
+            <button id="save" class="btn btn-primary" disabled>Save</button>
+          </div>
+        </div>
+      </div>
+    </main>
 
     <script src="popup.js"></script>
   </body>

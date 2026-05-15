@@ -45,6 +45,36 @@ function basenameFromUrl(url, fallback = "edited.html") {
   }
 }
 
+function stemFromUrl(url, fallback = "document") {
+  const base = basenameFromUrl(url, fallback);
+  return base.replace(/\.[^.]+$/, "") || fallback;
+}
+
+function wrapHtmlAsWord(html) {
+  const header = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="ProgId" content="Word.Document">
+<meta name="Generator" content="PagePatch">
+<!--[if gte mso 9]><xml>
+<w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom>
+<w:DoNotOptimizeForBrowser/></w:WordDocument>
+</xml><![endif]-->
+</head>
+<body>`;
+  const footer = `</body></html>`;
+
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyContent = bodyMatch ? bodyMatch[1] : html;
+
+  const styleMatch = html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+  const styles = styleMatch ? styleMatch.join("\n") : "";
+
+  return `${header}\n${styles}\n${bodyContent}\n${footer}`;
+}
+
 async function sendToTab(tabId, message) {
   try {
     return await chrome.tabs.sendMessage(tabId, message);
@@ -82,6 +112,28 @@ function isTrustedSender(sender) {
 
 function isValidTabId(value) {
   return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+const injectedLibs = new Map();
+
+async function injectLibIfNeeded(tabId, lib) {
+  const key = `${tabId}:${lib}`;
+  if (injectedLibs.get(key)) return;
+  const files = {
+    "html2pdf": ["lib/html2pdf.bundle.min.js"],
+    "html-docx": ["lib/html-docx.js"],
+  };
+  const scripts = files[lib];
+  if (!scripts) return;
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: scripts,
+    });
+    injectedLibs.set(key, true);
+  } catch (err) {
+    console.warn(`Failed to inject ${lib}:`, err);
+  }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -164,7 +216,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       if (message?.type === "SAVE") {
-        const tabId = message.tabId;
+        const tabId = isValidTabId(message.tabId) ? message.tabId : senderTabId;
         if (!isValidTabId(tabId)) {
           sendResponse({ error: "Invalid tabId." });
           return;
@@ -218,6 +270,184 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
+      if (message?.type === "EXPORT_PDF") {
+        const tabId = message.tabId;
+        if (!isValidTabId(tabId)) {
+          sendResponse({ error: "Invalid tabId." });
+          return;
+        }
+        const ok = await ensureContentScript(tabId);
+        if (!ok) {
+          sendResponse({ error: "Cannot access this page." });
+          return;
+        }
+        await injectLibIfNeeded(tabId, "html2pdf");
+        const tab = await chrome.tabs.get(tabId);
+        const stem = stemFromUrl(tab.url);
+        const res = await sendToTab(tabId, { type: "GENERATE_PDF", filename: `${stem}.pdf` });
+        if (res?.error) {
+          sendResponse({ error: res.error });
+          return;
+        }
+        if (res?.dataUrl) {
+          try {
+            const downloadId = await chrome.downloads.download({
+              url: res.dataUrl,
+              filename: `${stem}.pdf`,
+              saveAs: true,
+              conflictAction: "uniquify",
+            });
+            if (downloadId == null) {
+              sendResponse({ cancelled: true });
+              return;
+            }
+            const result = await waitForDownload(downloadId);
+            if (result.state === "complete") {
+              sendResponse({ ok: true, filename: result.filename });
+            } else if (result.state === "interrupted") {
+              if (result.error === "USER_CANCELED") {
+                sendResponse({ cancelled: true });
+              } else {
+                sendResponse({ error: `Download failed: ${result.error || "unknown"}` });
+              }
+            } else {
+              sendResponse({ ok: true });
+            }
+          } catch (err) {
+            const msg = err?.message || String(err);
+            if (/canceled|cancelled/i.test(msg)) {
+              sendResponse({ cancelled: true });
+            } else {
+              sendResponse({ error: msg });
+            }
+          }
+        } else {
+          sendResponse({ error: "PDF generation failed." });
+        }
+        return;
+      }
+
+      if (message?.type === "EXPORT_DOCX") {
+        const tabId = message.tabId;
+        if (!isValidTabId(tabId)) {
+          sendResponse({ error: "Invalid tabId." });
+          return;
+        }
+        const ok = await ensureContentScript(tabId);
+        if (!ok) {
+          sendResponse({ error: "Cannot access this page." });
+          return;
+        }
+        const tab = await chrome.tabs.get(tabId);
+        const stem = stemFromUrl(tab.url);
+        const useLibrary = !!message.useLibrary;
+
+        if (useLibrary) {
+          await injectLibIfNeeded(tabId, "html-docx");
+          const res = await sendToTab(tabId, { type: "GENERATE_DOCX" });
+          if (res?.error) {
+            sendResponse({ error: res.error });
+            return;
+          }
+          if (res?.dataUrl) {
+            try {
+              const downloadId = await chrome.downloads.download({
+                url: res.dataUrl,
+                filename: `${stem}.docx`,
+                saveAs: true,
+                conflictAction: "uniquify",
+              });
+              if (downloadId == null) {
+                sendResponse({ cancelled: true });
+                return;
+              }
+              const result = await waitForDownload(downloadId);
+              if (result.state === "complete") {
+                sendResponse({ ok: true, filename: result.filename });
+              } else if (result.state === "interrupted") {
+                if (result.error === "USER_CANCELED") {
+                  sendResponse({ cancelled: true });
+                } else {
+                  sendResponse({ error: `Download failed: ${result.error || "unknown"}` });
+                }
+              } else {
+                sendResponse({ ok: true });
+              }
+            } catch (err) {
+              const msg = err?.message || String(err);
+              if (/canceled|cancelled/i.test(msg)) {
+                sendResponse({ cancelled: true });
+              } else {
+                sendResponse({ error: msg });
+              }
+            }
+          } else {
+            sendResponse({ error: "DOCX generation failed." });
+          }
+        } else {
+          const res = await sendToTab(tabId, { type: "GET_HTML" });
+          if (res?.error) {
+            sendResponse({ error: res.error });
+            return;
+          }
+          const html = res?.html;
+          if (typeof html !== "string") {
+            sendResponse({ error: "Could not read page HTML." });
+            return;
+          }
+          const wordHtml = wrapHtmlAsWord(html);
+          const dataUrl = `data:application/msword;charset=utf-8,${encodeURIComponent(wordHtml)}`;
+          try {
+            const downloadId = await chrome.downloads.download({
+              url: dataUrl,
+              filename: `${stem}.doc`,
+              saveAs: true,
+              conflictAction: "uniquify",
+            });
+            if (downloadId == null) {
+              sendResponse({ cancelled: true });
+              return;
+            }
+            const result = await waitForDownload(downloadId);
+            if (result.state === "complete") {
+              sendResponse({ ok: true, filename: result.filename });
+            } else if (result.state === "interrupted") {
+              if (result.error === "USER_CANCELED") {
+                sendResponse({ cancelled: true });
+              } else {
+                sendResponse({ error: `Download failed: ${result.error || "unknown"}` });
+              }
+            } else {
+              sendResponse({ ok: true });
+            }
+          } catch (err) {
+            const msg = err?.message || String(err);
+            if (/canceled|cancelled/i.test(msg)) {
+              sendResponse({ cancelled: true });
+            } else {
+              sendResponse({ error: msg });
+            }
+          }
+        }
+        return;
+      }
+
+      if (message?.type === "EXPORT_PRINT") {
+        const tabId = message.tabId;
+        if (!isValidTabId(tabId)) {
+          sendResponse({ error: "Invalid tabId." });
+          return;
+        }
+        const ok = await ensureContentScript(tabId);
+        if (!ok) {
+          sendResponse({ error: "Cannot access this page." });
+          return;
+        }
+        const res = await sendToTab(tabId, { type: "PRINT" });
+        sendResponse(res || { ok: true });
+        return;
+      }
+
       sendResponse({ error: `Unknown message type: ${message?.type}` });
     } catch (err) {
       sendResponse({ error: err?.message || String(err) });
@@ -248,10 +478,16 @@ function waitForDownload(downloadId) {
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   clearTabState(tabId).catch(() => {});
+  for (const key of injectedLibs.keys()) {
+    if (key.startsWith(`${tabId}:`)) injectedLibs.delete(key);
+  }
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
     clearTabState(tabId).catch(() => {});
+    for (const key of injectedLibs.keys()) {
+      if (key.startsWith(`${tabId}:`)) injectedLibs.delete(key);
+    }
   }
 });

@@ -8,6 +8,8 @@
   const FIND_MATCH_CLASS = "__cee_find_match__";
   const FIND_CURRENT_CLASS = "__cee_find_current__";
 
+  let fileHandle = null;
+
   const state = {
     editing: false,
     dirty: false,
@@ -560,6 +562,9 @@
       case "findClose":
         findClose();
         return;
+      case "save":
+        saveInPlace();
+        return;
       default:
         return;
     }
@@ -636,35 +641,192 @@
     return `${doctype}\n${cloned.outerHTML}`;
   }
 
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  function fileNameFromUrl() {
     try {
-      if (message?.type === "PING") {
+      const path = decodeURIComponent(new URL(location.href).pathname);
+      return path.split("/").filter(Boolean).pop() || "edited.html";
+    } catch {
+      return "edited.html";
+    }
+  }
+
+  async function saveInPlace() {
+    if (!window.showSaveFilePicker) {
+      chrome.runtime.sendMessage({ type: "SAVE", tabId: null, saveAs: false });
+      return;
+    }
+
+    const html = captureCleanHtml();
+
+    try {
+      if (!fileHandle) {
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: fileNameFromUrl(),
+          types: [{
+            description: "HTML Files",
+            accept: { "text/html": [".html", ".htm", ".xhtml"] },
+          }],
+        });
+      }
+
+      const writable = await fileHandle.createWritable();
+      await writable.write(html);
+      await writable.close();
+
+      setDirty(false);
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      fileHandle = null;
+      chrome.runtime.sendMessage({ type: "SAVE", tabId: null, saveAs: false });
+    }
+  }
+
+  const CONTENT_MESSAGE_TYPES = new Set([
+    "PING", "SET_EDIT", "GET_HTML", "MARK_CLEAN", "SAVE_IN_PLACE",
+    "PRINT", "GENERATE_PDF", "GENERATE_DOCX",
+  ]);
+
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (!CONTENT_MESSAGE_TYPES.has(message?.type)) return false;
+
+    try {
+      if (message.type === "PING") {
         sendResponse({ ok: true, editing: state.editing, dirty: state.dirty });
         return false;
       }
-      if (message?.type === "SET_EDIT") {
+      if (message.type === "SET_EDIT") {
         if (message.enable) enableEditing();
         else disableEditing();
         sendResponse({ editing: state.editing, dirty: state.dirty });
         return false;
       }
-      if (message?.type === "GET_HTML") {
+      if (message.type === "GET_HTML") {
         const html = captureCleanHtml();
         sendResponse({ html });
         return false;
       }
-      if (message?.type === "MARK_CLEAN") {
+      if (message.type === "MARK_CLEAN") {
         setDirty(false);
         sendResponse({ ok: true });
         return false;
       }
-      sendResponse({ error: `Unknown message type: ${message?.type}` });
-      return false;
+      if (message.type === "SAVE_IN_PLACE") {
+        saveInPlace().then(() => sendResponse({ ok: true }))
+          .catch((err) => sendResponse({ error: err?.message || String(err) }));
+        return true;
+      }
+      if (message.type === "PRINT") {
+        const savedMargin = document.body.style.margin;
+        const savedPadding = document.body.style.padding;
+
+        const printStyle = document.createElement("style");
+        printStyle.id = "__cee_print_style__";
+        printStyle.textContent = `
+          @page { margin: 0; }
+          @media print {
+            html, body { margin: 0 !important; padding: 4mm 0 !important; }
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+          }
+        `;
+        document.head.appendChild(printStyle);
+        window.print();
+
+        const cleanup = () => {
+          printStyle.remove();
+          document.body.style.margin = savedMargin;
+          document.body.style.padding = savedPadding;
+        };
+        if (window.matchMedia) {
+          const mql = window.matchMedia("print");
+          const handler = (e) => {
+            if (!e.matches) { cleanup(); mql.removeEventListener("change", handler); }
+          };
+          mql.addEventListener("change", handler);
+          setTimeout(cleanup, 5000);
+        } else {
+          setTimeout(cleanup, 500);
+        }
+
+        sendResponse({ ok: true });
+        return false;
+      }
+      if (message.type === "GENERATE_PDF") {
+        generatePdf()
+          .then((dataUrl) => sendResponse({ dataUrl }))
+          .catch((err) => sendResponse({ error: err?.message || String(err) }));
+        return true;
+      }
+      if (message.type === "GENERATE_DOCX") {
+        generateDocx()
+          .then((dataUrl) => sendResponse({ dataUrl }))
+          .catch((err) => sendResponse({ error: err?.message || String(err) }));
+        return true;
+      }
     } catch (err) {
       sendResponse({ error: err?.message || String(err) });
       return false;
     }
   });
+
+  async function generatePdf() {
+    if (typeof html2pdf === "undefined") {
+      throw new Error("html2pdf library not loaded.");
+    }
+    const toolbarHost = document.getElementById(HOST_ID);
+    if (toolbarHost) toolbarHost.style.display = "none";
+
+    const saved = {
+      bodyMargin: document.body.style.margin,
+      bodyPadding: document.body.style.padding,
+      htmlMargin: document.documentElement.style.margin,
+      htmlPadding: document.documentElement.style.padding,
+    };
+    document.body.style.margin = "0";
+    document.body.style.padding = "0";
+    document.documentElement.style.margin = "0";
+    document.documentElement.style.padding = "0";
+
+    try {
+      const opt = {
+        margin: [0, 0, 0, 0],
+        filename: "export.pdf",
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: "css" },
+      };
+      const blob = await html2pdf().set(opt).from(document.body).outputPdf("blob");
+      return await blobToDataUrl(blob);
+    } finally {
+      document.body.style.margin = saved.bodyMargin;
+      document.body.style.padding = saved.bodyPadding;
+      document.documentElement.style.margin = saved.htmlMargin;
+      document.documentElement.style.padding = saved.htmlPadding;
+      if (toolbarHost) toolbarHost.style.display = "";
+    }
+  }
+
+  async function generateDocx() {
+    if (typeof htmlDocx === "undefined") {
+      throw new Error("html-docx library not loaded.");
+    }
+    const html = captureCleanHtml();
+    const blob = htmlDocx.asBlob(html);
+    return await blobToDataUrl(blob);
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Failed to read blob."));
+      reader.readAsDataURL(blob);
+    });
+  }
 
   window.addEventListener("beforeunload", (e) => {
     if (state.editing && state.dirty) {

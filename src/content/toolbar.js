@@ -9,6 +9,12 @@
   // web_accessible_resources, which would otherwise leak a fingerprinting probe
   // surface to every visited page.
   const TOOLBAR_CSS = `
+@media print {
+  :host {
+    display: none !important;
+  }
+}
+
 :host {
   all: initial;
   display: block;
@@ -30,7 +36,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 6px 8px;
+  padding: 6px 6px;
   background: #ffffff;
   color: #111827;
   border: 1px solid #e5e7eb;
@@ -39,7 +45,7 @@
   user-select: none;
   font-size: 13px;
   line-height: 1;
-  max-width: min(900px, calc(100vw - 24px));
+  max-width: 68px;
   cursor: grab;
 }
 
@@ -60,15 +66,15 @@
 }
 
 .handle {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
-  height: 28px;
+  padding: 0;
+  height: 18px;
   cursor: grab;
   color: #6b7280;
   user-select: none;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
   flex-shrink: 0;
 }
 
@@ -77,10 +83,10 @@
 }
 
 .divider {
-  width: 1px;
-  height: 18px;
+  width: 100%;
+  height: 1px;
   background: #e5e7eb;
-  margin: 0 2px;
+  margin: 2px 0;
   flex-shrink: 0;
 }
 
@@ -92,9 +98,9 @@
   font: inherit;
   font-size: 13px;
   line-height: 1;
-  height: 28px;
-  min-width: 28px;
-  padding: 0 8px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0 4px;
   border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
@@ -159,15 +165,21 @@
   background: #ffffff;
   color: #111827;
   font: inherit;
-  font-size: 12px;
-  height: 28px;
-  padding: 0 22px 0 8px;
+  font-size: 10px;
+  height: 26px;
+  padding: 0 16px 0 4px;
   border-radius: 6px;
   cursor: pointer;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path d='M1 1l3 3 3-3' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat: no-repeat;
-  background-position: right 6px center;
+  background-position: right 4px center;
   flex-shrink: 0;
+  flex-grow: 1;
+  min-width: 0;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .select:hover {
@@ -234,12 +246,69 @@
   padding: 0;
 }
 
+/* ─── Horizontal mode overrides ─── */
+
+.toolbar.horizontal {
+  max-width: min(1000px, calc(100vw - 24px));
+}
+
+.toolbar.horizontal .divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+}
+
+.toolbar.horizontal .handle {
+  display: inline-flex;
+  height: 26px;
+  padding: 0 4px;
+  letter-spacing: 1px;
+}
+
+.toolbar.horizontal .select {
+  max-width: none;
+}
+
+.layout-toggle {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #6b7280;
+  height: 18px;
+  width: 18px;
+  padding: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.layout-toggle:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.layout-toggle .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.save-row {
+  flex-direction: row !important;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+}
+
 .dirty-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: #f59e0b;
-  margin-left: 4px;
+  margin: 0;
   display: none;
   flex-shrink: 0;
 }
@@ -255,7 +324,7 @@
   border-radius: 8px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
   padding: 8px;
-  width: 360px;
+  width: 280px;
   max-width: calc(100vw - 24px);
   flex-direction: column;
   gap: 6px;
@@ -425,6 +494,9 @@
     quote: "M7 7h4v4H7zm0 4c0 3 2 5 4 5 M15 7h4v4h-4zm0 4c0 3 2 5 4 5",
     clear: "M7 7l10 10 M16 5h3v3 M14 8L7 15l-3 3 3-3 7-7zM5 18h6",
     search: "M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14z M21 21l-5.5-5.5",
+    save: "M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8",
+    layoutV: "M4 4h6v16H4z M14 4h6v16h-6z",
+    layoutH: "M4 4h16v6H4z M4 14h16v6H4z",
   };
 
   function svgIcon(d) {
@@ -675,7 +747,7 @@
     if (buttons.remove) buttons.remove.disabled = !inEditable || isCollapsed;
     if (buttons.code) buttons.code.disabled = !inEditable || (isCollapsed && !isInlineCode(range));
 
-    [buttons.undo, buttons.redo, buttons.find].forEach((b) => {
+    [buttons.undo, buttons.redo, buttons.find, buttons.save].forEach((b) => {
       if (b) b.disabled = false;
     });
   }
@@ -1003,12 +1075,38 @@
     const row2 = document.createElement("div");
     row2.className = "row";
 
+    const topBar = document.createElement("div");
+    topBar.className = "row";
+    topBar.style.justifyContent = "space-between";
+    topBar.style.flexWrap = "nowrap";
+
     const handle = document.createElement("div");
     handle.className = "handle";
     handle.setAttribute("aria-label", "Drag to move");
     handle.dataset.tooltip = "Drag to move (or grab any toolbar gap)";
     handle.textContent = "⋮⋮";
-    row1.appendChild(handle);
+
+    const layoutBtn = document.createElement("button");
+    layoutBtn.type = "button";
+    layoutBtn.className = "layout-toggle";
+    layoutBtn.setAttribute("aria-label", "Toggle layout");
+    layoutBtn.dataset.tooltip = "Toggle vertical / horizontal";
+    layoutBtn.appendChild(svgIcon(ICONS.layoutH));
+    layoutBtn.addEventListener("mousedown", (e) => e.preventDefault());
+    layoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const isHorizontal = toolbarEl.classList.toggle("horizontal");
+      layoutBtn.replaceChildren(svgIcon(isHorizontal ? ICONS.layoutV : ICONS.layoutH));
+      const shellEl = shadow.querySelector(".shell");
+      if (shellEl) {
+        shellEl.style.left = "";
+        shellEl.style.top = "";
+        shellEl.style.right = "12px";
+      }
+    });
+
+    topBar.append(handle, layoutBtn);
+    toolbarEl.appendChild(topBar);
 
     buttons.undo = buildButton({ icon: ICONS.undo, title: "Undo (Ctrl/Cmd+Z)", action: { type: "undo" } });
     buttons.redo = buildButton({ icon: ICONS.redo, title: "Redo (Ctrl/Cmd+Shift+Z)", action: { type: "redo" } });
@@ -1051,12 +1149,6 @@
     });
     row1.append(buttons.foreColor, buttons.hiliteColor, makeDivider());
 
-    dirtyDot = document.createElement("span");
-    dirtyDot.className = "dirty-dot";
-    dirtyDot.setAttribute("aria-label", "Unsaved changes");
-    dirtyDot.dataset.tooltip = "Unsaved changes";
-    row1.appendChild(dirtyDot);
-
     buttons.alignLeft = buildButton({ icon: ICONS.alignLeft, title: "Align left", action: { type: "align", value: "left" } });
     buttons.alignCenter = buildButton({ icon: ICONS.alignCenter, title: "Align center", action: { type: "align", value: "center" } });
     buttons.alignRight = buildButton({ icon: ICONS.alignRight, title: "Align right", action: { type: "align", value: "right" } });
@@ -1078,7 +1170,19 @@
     row2.append(buttons.clearFormat, buttons.remove, makeDivider());
 
     buttons.find = buildButton({ icon: ICONS.search, title: "Find & Replace (Ctrl/Cmd+F)", action: { type: "__toggleFind" } });
-    row2.append(buttons.find);
+    row2.append(buttons.find, makeDivider());
+
+    dirtyDot = document.createElement("span");
+    dirtyDot.className = "dirty-dot";
+    dirtyDot.setAttribute("aria-label", "Unsaved changes");
+    dirtyDot.dataset.tooltip = "Unsaved changes";
+
+    buttons.save = buildButton({ icon: ICONS.save, title: "Save (Ctrl/Cmd+S)", action: { type: "save" } });
+
+    const saveRow = document.createElement("div");
+    saveRow.className = "row save-row";
+    saveRow.append(buttons.save, dirtyDot);
+    row2.append(saveRow);
 
     toolbarEl.append(row1, row2);
     toolbarEl.addEventListener("mousedown", startDrag);

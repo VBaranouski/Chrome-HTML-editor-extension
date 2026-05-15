@@ -6,6 +6,9 @@ const $filename = document.getElementById("filename");
 const $state = document.getElementById("state");
 const $fileState = document.getElementById("file-state");
 const $hint = document.getElementById("hint");
+const $exportBtn = document.getElementById("export-btn");
+const $exportMenu = document.getElementById("export-menu");
+const $themeToggle = document.getElementById("theme-toggle");
 
 let currentTabId = null;
 let currentUrl = null;
@@ -143,4 +146,70 @@ async function triggerSave() {
 
 $save.addEventListener("click", triggerSave);
 
-document.addEventListener("DOMContentLoaded", init);
+$exportBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const isOpen = !$exportMenu.hidden;
+  $exportMenu.hidden = isOpen;
+});
+
+document.addEventListener("click", () => {
+  $exportMenu.hidden = true;
+});
+
+$exportMenu.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const item = e.target.closest("[data-format]");
+  if (!item) return;
+  $exportMenu.hidden = true;
+  const format = item.dataset.format;
+  triggerExport(format);
+});
+
+async function triggerExport(format) {
+  if (currentTabId == null) return;
+  const actions = {
+    pdf: { type: "EXPORT_PRINT", tabId: currentTabId },
+  };
+  const msg = actions[format];
+  if (!msg) return;
+
+  setHint(`Exporting ${format.toUpperCase()}…`);
+
+  try {
+    const res = await chrome.runtime.sendMessage(msg);
+    if (res?.error) {
+      setHint(res.error, "error");
+    } else if (res?.cancelled) {
+      setHint("Export cancelled.");
+    } else {
+      setHint(`Exported as ${format.toUpperCase()}.`, "success");
+    }
+  } catch (err) {
+    setHint(`Export failed: ${err?.message || err}`, "error");
+  }
+}
+
+function applyTheme(theme) {
+  const isLight = theme === "light";
+  document.body.classList.toggle("light", isLight);
+  const icon = $themeToggle.querySelector(".material-symbols-outlined");
+  if (icon) icon.textContent = isLight ? "dark_mode" : "light_mode";
+}
+
+function initTheme() {
+  chrome.storage.local.get("theme", (res) => {
+    applyTheme(res.theme || "dark");
+  });
+}
+
+$themeToggle.addEventListener("click", () => {
+  const isCurrentlyLight = document.body.classList.contains("light");
+  const next = isCurrentlyLight ? "dark" : "light";
+  applyTheme(next);
+  chrome.storage.local.set({ theme: next });
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  initTheme();
+  init();
+});
