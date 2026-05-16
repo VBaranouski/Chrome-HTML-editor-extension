@@ -19,22 +19,28 @@ A practical, step-by-step guide for taking PagePatch from this repository to a p
 The store wants a flat `.zip` of the extension root — no `.git`, `node_modules`, hidden files, etc.
 
 ```bash
-zip -r pagepatch-0.1.0.zip \
+# Use the build script (recommended):
+./build-zip.sh
+
+# Or manually:
+VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])")
+zip -r "pagepatch-${VERSION}.zip" \
   manifest.json README.md PRIVACY.md LICENSE \
-  src icons \
+  src/ icons/ \
   -x "*.DS_Store" "*/.git/*" "*/node_modules/*"
 ```
 
 Notes:
 
-- `examples/sample.html` is for local testing only — exclude it from the upload to keep the package minimal.
+- `examples/`, `lib/`, and `PUBLISHING.md` are for local testing/development only — they are excluded from the upload to keep the package minimal.
 - Bump `manifest.json`'s `"version"` (and optionally add `"version_name"`) before zipping each release. CWS rejects re-uploads of a package whose version isn't strictly higher than the currently published one.
 
 Validate the package before uploading:
 
 ```bash
-python -c "import json; json.load(open('manifest.json'))"   # JSON sanity
-unzip -l pagepatch-0.1.0.zip                                # contents check
+VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])")
+python3 -c "import json; json.load(open('manifest.json'))"   # JSON sanity
+unzip -l "pagepatch-${VERSION}.zip"                           # contents check
 ```
 
 Smoke-test: load the *unpacked* zip contents in a fresh Chrome profile (`chrome://extensions` → "Load unpacked"), repeat the README usage flow, and watch DevTools Console for warnings.
@@ -74,7 +80,7 @@ CWS asks for a brief justification for each permission. Paste these verbatim:
 | Remote code use | **No.** All code is bundled in the package. |
 | Data collected | **None.** PagePatch does not collect, transmit, or sell user data. |
 
-Because the manifest no longer requests `<all_urls>` you will *not* be asked to fill in the "broad host permission" justification, and review will be markedly faster.
+The manifest only requests `file:///*` as a host permission (no `<all_urls>`, no `http://*/*`, no `https://*/*`), so you will *not* be asked to fill in the "broad host permission" justification, and review will be markedly faster.
 
 ## 6. Privacy policy (required)
 
@@ -97,7 +103,7 @@ CWS requires a public privacy-policy URL whenever you request `storage`, `downlo
 
 ## 8. Post-publish
 
-- **Tag releases in Git**: `git tag v0.1.0 && git push --tags`. Keep `manifest.json` `version` and the tag in lock-step.
+- **Tag releases in Git**: `git tag v$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])") && git push --tags`. Keep `manifest.json` `version` and the tag in lock-step.
 - **Update pipeline**: bump `version`, re-zip, upload as a new package; CWS auto-rolls out.
 - **Monitor the dashboard**: install count, weekly user counts, ratings, crash reports.
 - **Respond to reviews** within ~48 h while the listing is young — it strongly affects the algorithm.

@@ -456,11 +456,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-function waitForDownload(downloadId) {
+function waitForDownload(downloadId, timeoutMs = 120_000) {
   return new Promise((resolve) => {
+    let settled = false;
     const onChanged = (delta) => {
       if (delta.id !== downloadId) return;
       if (delta.state?.current === "complete" || delta.state?.current === "interrupted") {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         chrome.downloads.onChanged.removeListener(onChanged);
         chrome.downloads.search({ id: downloadId }, (items) => {
           const item = items?.[0];
@@ -472,6 +476,12 @@ function waitForDownload(downloadId) {
         });
       }
     };
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      chrome.downloads.onChanged.removeListener(onChanged);
+      resolve({ state: "interrupted", error: "TIMEOUT" });
+    }, timeoutMs);
     chrome.downloads.onChanged.addListener(onChanged);
   });
 }

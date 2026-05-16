@@ -112,7 +112,8 @@ Before saving, the extension cleans up its own DOM artifacts (toolbar host, find
 │   └── popup/
 │       ├── popup.html
 │       ├── popup.js
-│       └── popup.css
+│       ├── popup.css
+│       └── icons.css
 ├── icons/
 │   ├── icon16.png
 │   ├── icon48.png
@@ -132,7 +133,7 @@ PagePatch requests only the permissions it actually needs:
 - `activeTab`, `scripting` — to inject the editor on the current tab when you click the toolbar icon (no persistent broad host access).
 - `downloads` — to surface Chrome's Save As dialog when you save the edited HTML.
 - `storage` — used only for `chrome.storage.session` (volatile, not synced) to remember per-tab edit state.
-- `host_permissions: file:///*` — to enable editing of local HTML files, the extension's stated single purpose.
+- `host_permissions: file:///*` — to enable editing of local HTML files, the extension's stated single purpose. The `activeTab` permission provides temporary access to `http(s)` pages when the user clicks the icon, so no broad host permissions are needed.
 
 PagePatch makes no network requests, ships no remote code, and collects no telemetry. See [PRIVACY.md](PRIVACY.md) for full details.
 

@@ -43,10 +43,10 @@
   --warning:                  #f6b23d;
   --success:                  #00fd40;
 
-  /* Fonts */
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-body:    'Inter', sans-serif;
-  --font-mono:    'JetBrains Mono', monospace;
+  /* Fonts — system stacks, no external loading */
+  --font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body:    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:    ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace;
 }
 
 /* ─── Light Theme ──────────────────────────────────────────────── */
@@ -172,8 +172,9 @@ body.light .file-state.dirty .dirty-indicator {
   color: var(--on-background);
 }
 
-.theme-toggle .material-symbols-outlined {
-  font-size: 18px;
+.theme-toggle .icon {
+  width: 18px;
+  height: 18px;
 }
 
 /* ─── Reset ────────────────────────────────────────────────────── */
@@ -275,15 +276,12 @@ body::before {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: 1px solid var(--primary-container);
-  border-radius: 2px;
-  background: var(--surface-container-high);
-  box-shadow: 0 0 8px rgba(0,200,212,0.3);
+  flex-shrink: 0;
 }
 
-.brand-icon .material-symbols-outlined {
-  font-size: 18px;
-  color: var(--primary-container);
+.brand-icon img {
+  display: block;
+  border-radius: 2px;
 }
 
 .header h1 {

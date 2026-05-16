@@ -183,12 +183,12 @@
   }
 
   function withStyleCSS(fn) {
-    let prev = false;
+    const prev = document.queryCommandValue("styleWithCSS");
     try {
-      document.execCommand("styleWithCSS", false, true);
+      document.execCommand("styleWithCSS", false, "true");
       fn();
     } finally {
-      document.execCommand("styleWithCSS", false, prev);
+      document.execCommand("styleWithCSS", false, prev === "true" ? "true" : "false");
     }
   }
 

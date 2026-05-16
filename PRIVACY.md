@@ -1,6 +1,6 @@
 # PagePatch Privacy Policy
 
-_Last updated: 2026-04-29_
+_Last updated: 2026-05-15_
 
 PagePatch ("the extension") does **not** collect, transmit, sell, or share any personal information.
 
@@ -13,7 +13,8 @@ PagePatch ("the extension") does **not** collect, transmit, sell, or share any p
 ## What the extension stores
 
 - A small per-tab object kept in `chrome.storage.session` to remember whether edit mode is on for that tab and whether there are unsaved changes. This storage is volatile: it is cleared whenever Chrome closes and is never synced to your Google account.
-- No data is written to `chrome.storage.local`, `chrome.storage.sync`, IndexedDB, or LocalStorage.
+- A user theme preference (`"light"` or `"dark"`) stored in `chrome.storage.local`. This persists across sessions but is never synced to your Google account.
+- No data is written to `chrome.storage.sync`, IndexedDB, or LocalStorage.
 
 ## What the extension reads
 

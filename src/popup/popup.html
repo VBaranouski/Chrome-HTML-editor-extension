@@ -4,16 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PagePatch</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="stylesheet" href="icons.css" />
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
@@ -26,15 +17,13 @@
       <header class="header">
         <div class="brand">
           <div class="brand-icon">
-            <span class="material-symbols-outlined" aria-hidden="true"
-              >code</span
-            >
+            <img src="../../icons/icon128.png" alt="" width="28" height="28" aria-hidden="true" />
           </div>
           <h1>PagePatch</h1>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-            <span class="material-symbols-outlined">light_mode</span>
+            <span class="icon" id="theme-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span>
           </button>
           <span id="state" class="status-pill">READ-ONLY</span>
         </div>
